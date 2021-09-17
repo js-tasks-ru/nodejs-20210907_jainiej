@@ -1,23 +1,53 @@
-const url = require('url');
-const http = require('http');
-const path = require('path');
+/* eslint-disable quotes */
+const url = require("url");
+const fs = require("fs");
+const http = require("http");
+const path = require("path");
 
 const server = new http.Server();
 
-server.on('request', (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = url.pathname.slice(1);
+server.on("request", (req, res) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const pathname = url.pathname.slice(1);
 
-  const filepath = path.join(__dirname, 'files', pathname);
+    if (pathname.includes("/")) {
+      throw new Error();
+    }
 
-  switch (req.method) {
-    case 'GET':
+    const filepath = path.join(__dirname, "files", pathname);
+    const stream = fs.createReadStream(filepath);
 
-      break;
+    stream.on("error", (err) => {
+      if (err.code === "ENOENT") {
+        res.statusCode = 404;
+        res.end("File not found");
+        return;
+      } else {
+        res.statusCode = 500;
+        res.end("Internal server error");
+        return;
+      }
+    });
 
-    default:
-      res.statusCode = 501;
-      res.end('Not implemented');
+    req.on("aborted", () => {
+      stream.destroy();
+      return;
+    });
+
+    switch (req.method) {
+      case "GET":
+        res.statusCode = 200;
+        stream.pipe(res);
+        break;
+
+      default:
+        res.statusCode = 501;
+        res.end("Not implemented");
+    }
+  } catch (e) {
+    res.statusCode = 400;
+    res.end("Nesting");
   }
 });
 
