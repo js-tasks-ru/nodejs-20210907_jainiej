@@ -1,3 +1,5 @@
+/* eslint-disable indent */
+/* eslint-disable object-curly-spacing */
 /* eslint-disable quotes */
 const url = require("url");
 const fs = require("fs");
@@ -14,9 +16,15 @@ server.on("request", (req, res) => {
 
   switch (req.method) {
     case "POST":
-      const writeStream = req.pipe(fs.createWriteStream(filepath));
+      const writeStream = req.pipe(
+        fs.createWriteStream(filepath, { flags: "wx" })
+      );
 
       writeStream.on("error", (e) => {
+        if (e.code === "EEXIST") {
+          res.statusCode = 409;
+          res.end("file already exists");
+        }
         console.log(e);
       });
 
